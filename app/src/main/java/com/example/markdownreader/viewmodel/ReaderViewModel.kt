@@ -7,14 +7,19 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.markdownreader.data.FileReader
 import com.example.markdownreader.data.MarkdownFile
+import com.example.markdownreader.data.RecentFile
 import com.example.markdownreader.data.ThemePreferences
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 data class ReaderUiState(
     val markdownFile: MarkdownFile? = null,
@@ -33,6 +38,22 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         .map { it ?: false }
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
+    val recentFiles: StateFlow<List<RecentFile>> = themePreferences.recentFiles
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    private val _fontScale = MutableStateFlow(DEFAULT_FONT_SCALE)
+    val fontScale: StateFlow<Float> = _fontScale
+
+    private var persistFontScaleJob: Job? = null
+
+    init {
+        viewModelScope.launch {
+            themePreferences.fontScale.first()?.let { saved ->
+                _fontScale.value = saved.coerceIn(MIN_FONT_SCALE, MAX_FONT_SCALE)
+            }
+        }
+    }
+
     private val _isEditMode = MutableStateFlow(false)
     val isEditMode: StateFlow<Boolean> = _isEditMode
 
@@ -46,6 +67,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
                 val file = FileReader.readMarkdownFromUri(uri, contentResolver)
                 _uiState.value = ReaderUiState(markdownFile = file)
                 _editContent.value = file.content
+                themePreferences.addRecentFile(uri.toString(), file.name)
             } catch (e: Exception) {
                 _uiState.value = ReaderUiState(
                     error = "无法读取文件: ${e.localizedMessage}"
@@ -85,5 +107,46 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateEditContent(text: String) {
         _editContent.value = text
+    }
+
+    fun clearRecentFiles() {
+        viewModelScope.launch {
+            themePreferences.clearRecentFiles()
+        }
+    }
+
+    /** 从错误页回到首页（最近打开列表） */
+    fun dismissError() {
+        _uiState.value = ReaderUiState()
+    }
+
+    fun setFontScale(scale: Float) {
+        val clamped = scale.coerceIn(MIN_FONT_SCALE, MAX_FONT_SCALE)
+        _fontScale.value = clamped
+        // 缩放过程中每帧都会变化，去抖后再写入 DataStore
+        persistFontScaleJob?.cancel()
+        persistFontScaleJob = viewModelScope.launch {
+            delay(FONT_SCALE_PERSIST_DELAY_MS)
+            themePreferences.setFontScale(clamped)
+        }
+    }
+
+    fun scaleFont(factor: Float) = setFontScale(_fontScale.value * factor)
+
+    fun increaseFontScale() = setFontScale(roundToStep(_fontScale.value + FONT_SCALE_STEP))
+
+    fun decreaseFontScale() = setFontScale(roundToStep(_fontScale.value - FONT_SCALE_STEP))
+
+    fun resetFontScale() = setFontScale(DEFAULT_FONT_SCALE)
+
+    private fun roundToStep(scale: Float): Float =
+        (scale * 10).roundToInt() / 10f
+
+    companion object {
+        const val MIN_FONT_SCALE = 0.7f
+        const val MAX_FONT_SCALE = 2.5f
+        const val DEFAULT_FONT_SCALE = 1.0f
+        const val FONT_SCALE_STEP = 0.1f
+        private const val FONT_SCALE_PERSIST_DELAY_MS = 400L
     }
 }

@@ -47,7 +47,8 @@ object MarkdownToHtml {
                 background: #f4f4f4;
                 padding: 16px;
                 border-radius: 8px;
-                overflow-x: auto;
+                white-space: pre-wrap;
+                word-break: break-word;
             }
             pre code { padding: 0; background: none; }
             blockquote {

@@ -1,5 +1,6 @@
 package com.example.markdownreader.ui.component
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -17,7 +18,10 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun MarkdownEditor(
     content: String,
+    fontScale: Float = 1f,
     onContentChange: (String) -> Unit,
+    onZoom: (Float) -> Unit = {},
+    scrollState: ScrollState = rememberScrollState(),
     modifier: Modifier = Modifier
 ) {
     BasicTextField(
@@ -25,14 +29,15 @@ fun MarkdownEditor(
         onValueChange = onContentChange,
         textStyle = TextStyle(
             fontFamily = FontFamily.Monospace,
-            fontSize = 14.sp,
-            lineHeight = 22.sp,
+            fontSize = (14 * fontScale).sp,
+            lineHeight = (22 * fontScale).sp,
             color = MaterialTheme.colorScheme.onSurface
         ),
         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 12.dp)
+            .pinchZoomText(onZoom = onZoom)
+            .verticalScroll(scrollState)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     )
 }

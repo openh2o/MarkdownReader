@@ -2,4 +2,5 @@
 <resources>
     <color name="md_theme_primary">#006C4C</color>
     <color name="md_theme_on_primary">#FFFFFF</color>
+    <color name="ic_launcher_background">#FFFFFF</color>
 </resources>
