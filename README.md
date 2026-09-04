@@ -4,8 +4,8 @@ A lightweight Android Markdown reader — open `.md` files from WeChat, file man
 
 一款轻量级 Android Markdown 阅读器 —— 从微信、文件管理器、应用内文件选择器或任何应用中打开 `.md` 文件。
 
-> **Fork note / Fork 说明**：This is an enhanced fork of [yiliqi78/MarkdownReader](https://github.com/yiliqi78/MarkdownReader) (upstream inactive since early 2026), focused on making the most of small phone screens for reading. Prebuilt APKs are available in [Releases](../../releases).
-> 本仓库是 [yiliqi78/MarkdownReader](https://github.com/yiliqi78/MarkdownReader) 的增强版 fork（上游已停止维护），围绕"手机屏幕寸土寸金"做了大量移动端阅读优化。可直接从 [Releases](../../releases) 下载 APK。
+> **Fork note / Fork 说明**：This is an enhanced fork of [yiliqi78/MarkdownReader](https://github.com/yiliqi78/MarkdownReader) (upstream inactive since early 2026), focused on making the most of small phone screens for reading. 
+> 本仓库是 [yiliqi78/MarkdownReader](https://github.com/yiliqi78/MarkdownReader) 的增强版 fork（上游已停止维护），做了一些优化改进。
 
 ---
 
@@ -51,10 +51,6 @@ A lightweight Android Markdown reader — open `.md` files from WeChat, file man
 
 - **High Refresh Rate / 高刷新率** — Requests the display's highest refresh mode at startup for smooth scrolling.
   启动即请求屏幕最高刷新率，滑动更流畅。
-- **Share & Export PDF / 分享与导出 PDF** — Share raw Markdown anywhere; export rendered content as PDF via system printing (code blocks wrap in PDF too).
-  分享 Markdown 原文；通过系统打印服务导出 PDF（代码块同样自动换行）。
-- **Distinct Debug Build / 调试版区分** — Debug flavor uses a `.debug` applicationId and its own launcher label, so debug and release coexist on one device.
-  调试包使用 `.debug` 包名与独立应用名，可与正式版共存安装。
 
 ## Download / 下载
 
@@ -90,8 +86,7 @@ cd MarkdownReader
 
 > Release builds read signing credentials from `keystore.properties` at the project root
 > (`storeFile=release.jks`, alias and passwords). These files are intentionally **not** committed —
-> create your own keystore and properties file to produce a signed release, otherwise run `assembleDebug`.
-> Release 构建签名信息读取项目根目录的 `keystore.properties`（密钥文件不入库），自建密钥后即可打包正式版；未配置时可直接构建 debug 版。
+> create your own keystore and properties file to produce a signed release, otherwise run `assembleDebug`。
 
 `gen_icons.py` regenerates the launcher icon PNGs from the glyph geometry (`Pillow` required).
 `gen_icons.py` 可重新生成传统启动图标 PNG（需安装 Pillow）。
