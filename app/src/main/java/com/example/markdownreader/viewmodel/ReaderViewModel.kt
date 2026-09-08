@@ -24,7 +24,9 @@ import kotlin.math.roundToInt
 data class ReaderUiState(
     val markdownFile: MarkdownFile? = null,
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    /** 每次成功载入新文件时递增，用于区分“换了文件”和“同文件的模式切换副本” */
+    val loadId: Long = 0
 )
 
 class ReaderViewModel(application: Application) : AndroidViewModel(application) {
@@ -60,12 +62,15 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     private val _editContent = MutableStateFlow("")
     val editContent: StateFlow<String> = _editContent
 
+    private var loadCounter = 0L
+
     fun loadFromUri(uri: Uri, contentResolver: ContentResolver) {
+        val loadId = ++loadCounter
         viewModelScope.launch(Dispatchers.IO) {
-            _uiState.value = ReaderUiState(isLoading = true)
+            _uiState.value = ReaderUiState(isLoading = true, loadId = loadId)
             try {
                 val file = FileReader.readMarkdownFromUri(uri, contentResolver)
-                _uiState.value = ReaderUiState(markdownFile = file)
+                _uiState.value = ReaderUiState(markdownFile = file, loadId = loadId)
                 _editContent.value = file.content
                 themePreferences.addRecentFile(uri.toString(), file.name)
             } catch (e: Exception) {
@@ -78,7 +83,8 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
 
     fun loadFromText(text: String) {
         _uiState.value = ReaderUiState(
-            markdownFile = MarkdownFile(name = "分享的文本", content = text)
+            markdownFile = MarkdownFile(name = "分享的文本", content = text),
+            loadId = ++loadCounter
         )
         _editContent.value = text
     }
@@ -91,11 +97,12 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
 
     fun toggleEditMode() {
         if (_isEditMode.value) {
-            // 从编辑模式切换回阅览模式 → 用编辑后的内容更新渲染
+            // 从编辑模式切换回阅览模式 → 用编辑后的内容更新渲染（保留 loadId，不算换文件）
             val currentFile = _uiState.value.markdownFile
             if (currentFile != null) {
                 _uiState.value = ReaderUiState(
-                    markdownFile = currentFile.copy(content = _editContent.value)
+                    markdownFile = currentFile.copy(content = _editContent.value),
+                    loadId = _uiState.value.loadId
                 )
             }
         } else {
@@ -118,6 +125,13 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     /** 从错误页回到首页（最近打开列表） */
     fun dismissError() {
         _uiState.value = ReaderUiState()
+    }
+
+    /** 关闭当前文件，回到主页。编辑内容只存在于内存中，关闭即放弃（与切换文件的行为一致） */
+    fun closeFile() {
+        _uiState.value = ReaderUiState()
+        _isEditMode.value = false
+        _editContent.value = ""
     }
 
     fun setFontScale(scale: Float) {

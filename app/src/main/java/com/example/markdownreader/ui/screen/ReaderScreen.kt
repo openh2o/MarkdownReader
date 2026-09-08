@@ -45,8 +45,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -76,6 +78,7 @@ import com.example.markdownreader.viewmodel.ReaderViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 @Composable
@@ -132,6 +135,19 @@ fun ReaderScreen(viewModel: ReaderViewModel) {
     val readerScrollState = rememberScrollState()
     val editorScrollState = rememberScrollState()
 
+    // 换了新文件（loadId 变化）时把滚动位置归零：从主页打开另一个文件不应继承
+    // 上一个文件的阅读进度；同文件的模式切换副本 loadId 不变，位置照常保留。
+    // ScrollState 的写入是挂起函数，须经协程归零——此时新文件尚在载入、正文未组合，不会闪动
+    val coroutineScope = rememberCoroutineScope()
+    var lastLoadId by remember { mutableLongStateOf(-1L) }
+    if (uiState.loadId != lastLoadId) {
+        lastLoadId = uiState.loadId
+        coroutineScope.launch {
+            readerScrollState.scrollTo(0)
+            editorScrollState.scrollTo(0)
+        }
+    }
+
     // 阅读 <-> 编辑按进度比例同步位置，避免切换后跳回文档开头
     LaunchedEffect(isEditMode) {
         if (isEditMode) {
@@ -164,6 +180,7 @@ fun ReaderScreen(viewModel: ReaderViewModel) {
                             isDarkMode = isDarkMode,
                             isEditMode = isEditMode,
                             hasContent = uiState.markdownFile != null,
+                            onHome = { viewModel.closeFile() },
                             onToggleTheme = { viewModel.toggleDarkMode() },
                             onToggleEditMode = { viewModel.toggleEditMode() },
                             onShare = {
@@ -215,6 +232,8 @@ fun ReaderScreen(viewModel: ReaderViewModel) {
                             title = uiState.markdownFile?.name ?: "MD阅读器",
                             isDarkMode = isDarkMode,
                             isEditMode = isEditMode,
+                            hasContent = uiState.markdownFile != null,
+                            onHome = { viewModel.closeFile() },
                             onToggleTheme = { viewModel.toggleDarkMode() },
                             onToggleEditMode = { viewModel.toggleEditMode() },
                             onShare = {
@@ -226,8 +245,7 @@ fun ReaderScreen(viewModel: ReaderViewModel) {
                                 uiState.markdownFile?.let { file ->
                                     PdfExporter.export(context, file.name, file.content)
                                 }
-                            },
-                            hasContent = uiState.markdownFile != null
+                            }
                         )
                     }
                 ) { paddingValues ->
